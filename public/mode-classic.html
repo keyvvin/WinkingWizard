@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hex Board – Classic</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="wrap">
+  <div id="ui">
+    <h1>HEX BOARD · Alpha</h1>
+
+        <div class="row" id="terrainButtons"></div>
+
+    <label>Board-Radius (Hex-Ring)</label>
+    <input id="radius" type="range" min="3" max="20" value="3" />
+    <div class="small">Aktuell: <span id="radiusVal">3</span></div>
+
+    <label>Hex-Größe</label>
+    <input id="size" type="range" min="18" max="140" value="140" />
+    <div class="small">Aktuell: <span id="sizeVal">140</span> px</div>
+
+        <div class="row">
+          <button id="clear">Clear</button>
+          <button id="random">Random</button>
+        </div>
+
+        <label>Export / Import (JSON)</label>
+        <textarea id="json"></textarea>
+        <div class="row">
+          <button id="copy">Copy</button>
+          <button id="load">Load</button>
+        </div>
+
+        <div class="meta">
+          <div class="pill"><span class="dot" style="background:#fff; opacity:.7"></span>
+            <span>Links-Klick: setzen · Rechts-Klick: löschen</span>
+          </div>
+          <div style="height:8px"></div>
+          <div class="pill"><span class="dot" style="background:#fff; opacity:.35"></span>
+            <span>Drag: verschieben · Wheel: zoom</span>
+          </div>
+          <div style="margin-top:10px">
+            Hover: <span id="hoverInfo">—</span>
+          </div>
+        </div>
+  </div>
+
+  <div id="play">
+    <div id="landPanel">
+      <div class="stack land-stack">
+        <div class="stack-label">Länder-Deck</div>
+        <div class="stack-count" id="landDeckCount">0</div>
+        <div class="land-buttons">
+          <button id="startLand">Start</button>
+          <button id="drawLand">Tile ziehen</button>
+        </div>
+      </div>
+      <div class="stack land-stack">
+        <div class="stack-label">In Hand</div>
+        <div class="land-hand" id="landHand">—</div>
+        <div class="land-draft" id="landDraft"></div>
+        <div class="land-hint">Ziehe 3 Tiles, wähle 1. Rest geht unter das Deck. Platziere das gewählte auf dem Board.</div>
+      </div>
+    </div>
+    <canvas id="canvas"></canvas>
+        <div id="cardPanel">
+          <div class="card-top">
+            <div class="stack">
+              <div class="stack-label">Deck</div>
+              <div class="stack-count" id="deckCount">0</div>
+              <button id="drawCard">Karte ziehen</button>
+            </div>
+            <div class="stack">
+              <div class="stack-label">Ablage</div>
+              <div class="stack-count" id="discardCount">0</div>
+              <button id="discardHand">Hand abwerfen</button>
+            </div>
+            <div class="stack">
+              <div class="stack-label">Zug</div>
+              <div class="stack-count" id="turnVal">1</div>
+              <button id="nextTurn">Nächster Zug</button>
+            </div>
+          </div>
+          <div class="hand-header">
+            <div class="hand-title">Hand</div>
+            <div class="hand-actions">
+              <button id="shuffleDeck">Deck mischen</button>
+            </div>
+          </div>
+          <div id="handRow"></div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
