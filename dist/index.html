@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hex Board – Auswahl</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 20% 20%, #f8fbff, #eef1f6 40%, #e6e9ef 90%);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 32px 16px;
+      color: #0f1115;
+    }
+    .grid {
+      width: min(1200px, 100%);
+      display: grid;
+      gap: 18px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+    .card {
+      background: #fff;
+      border: 1px solid #d8dde6;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow:
+        0 14px 60px rgba(15, 17, 21, 0.08),
+        0 4px 12px rgba(15, 17, 21, 0.08);
+      display: grid;
+      align-content: start;
+      gap: 12px;
+      transition: transform 160ms ease, box-shadow 160ms ease;
+    }
+    .card:hover { transform: translateY(-3px); box-shadow:
+        0 20px 70px rgba(15, 17, 21, 0.12),
+        0 6px 18px rgba(15, 17, 21, 0.10); }
+    h1 {
+      margin: 0 0 12px 0;
+      font-size: 24px;
+      letter-spacing: 0.2px;
+    }
+    .sub { opacity: 0.72; font-size: 14px; margin: 0 0 20px 0; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #eef2f8;
+      color: #1f2530;
+      font-size: 12px;
+      letter-spacing: 0.2px;
+    }
+    a.button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid #c3ccda;
+      background: linear-gradient(180deg, #fdfefe 0%, #f3f6fb 100%);
+      text-decoration: none;
+      color: #0f1115;
+      font-weight: 600;
+      transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+    }
+    a.button:hover {
+      transform: translateY(-2px);
+      border-color: #8fa4c7;
+      box-shadow: 0 6px 20px rgba(15, 17, 21, 0.12);
+    }
+    .title {
+      font-size: 18px;
+      margin: 0;
+    }
+    .desc { margin: 0; opacity: 0.75; line-height: 1.5; }
+    ul { margin: 0; padding-left: 18px; color: #1f2530; }
+  </style>
+</head>
+<body>
+  <main class="grid">
+    <div class="card">
+      <h1>Hex Board</h1>
+      <p class="sub">Wähle den Modus, den du öffnen möchtest.</p>
+      <span class="pill">npm run dev → index.html</span>
+    </div>
+
+    <div class="card">
+      <p class="title">Modus A · Editor & Karten (bisher)</p>
+      <p class="desc">Alle bisherigen Features: Editor mit Radius/Size, JSON Export/Import, Karten & Länder-Deck.</p>
+      <ul>
+        <li>Voller Funktionsumfang</li>
+        <li>Pointy Hex-Layout (wie gehabt)</li>
+      </ul>
+      <a class="button" href="/mode-classic.html">Modus A öffnen</a>
+    </div>
+
+    <div class="card">
+      <p class="title">Modus B · Flat-Board Mockup</p>
+      <p class="desc">Fixes Board wie im Mockup: flach liegende Hexes, random Start, Linksklick = zufälliges Tile, Rechtsklick = entfernen.</p>
+      <ul>
+        <li>Feste Größe (Radius 3)</li>
+        <li>Keine weiteren Optionen</li>
+      </ul>
+      <a class="button" href="/hexboard-flat.html">Modus B öffnen</a>
+    </div>
+  </main>
+</body>
+</html>

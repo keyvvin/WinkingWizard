@@ -1,0 +1,238 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b0d12;
+  --panel: rgba(255,255,255,0.04);
+  --panel2: rgba(255,255,255,0.02);
+  --border: rgba(255,255,255,0.08);
+  --accent: #7ab7ff;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: var(--bg);
+  color: #e8eefc;
+  overflow: hidden;
+}
+
+#wrap {
+  display: flex;
+  height: 100vh;
+}
+
+#ui {
+  width: 300px;
+  padding: 14px;
+  border-right: 1px solid rgba(255,255,255,0.08);
+  background: linear-gradient(180deg, var(--panel), var(--panel2));
+  backdrop-filter: blur(6px);
+  overflow-y: auto;
+}
+
+h1 { font-size: 14px; margin: 0 0 10px 0; opacity: .9; letter-spacing: .4px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+button, select, input, textarea {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
+  color: inherit;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+  outline: none;
+}
+button:hover { background: rgba(255,255,255,0.09); cursor: pointer; }
+button.active { border-color: rgba(255,255,255,0.35); background: rgba(255,255,255,0.12); }
+textarea { width: 100%; height: 140px; resize: vertical; border-radius: 12px; padding: 10px; }
+label { font-size: 12px; opacity: .8; display: block; margin-top: 10px; }
+.small { font-size: 12px; opacity: .8; }
+.meta { font-size: 12px; opacity: .75; line-height: 1.35; margin-top: 10px; }
+.pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.10); background: rgba(0,0,0,0.25); }
+.dot { width: 10px; height: 10px; border-radius: 99px; display: inline-block; }
+
+#play { flex: 1; display: flex; flex-direction: column; position: relative; }
+#canvas { flex: 1; display: block; }
+
+#landPanel {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: flex;
+  gap: 10px;
+  z-index: 2;
+}
+.land-stack { min-width: 160px; padding: 10px; }
+.land-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+.land-hand {
+  min-height: 46px;
+  border: 1px dashed rgba(255,255,255,0.16);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.land-hand .dot { width: 12px; height: 12px; }
+.land-hint { font-size: 11px; opacity: 0.7; margin-top: 6px; }
+.land-draft {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.land-card {
+  width: 82px;
+  height: 82px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.18);
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  background: rgba(255,255,255,0.04);
+}
+.land-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.land-card::after {
+  content: 'wählen';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.55));
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+.land-card:hover::after { opacity: 1; }
+.land-card.current::after {
+  content: 'gewählt';
+  opacity: 0.95;
+  background: linear-gradient(180deg, rgba(0,150,255,0.35), rgba(0,80,200,0.55));
+}
+.land-card.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+  border-style: dashed;
+}
+
+#cardPanel {
+  height: 210px;
+  padding: 12px 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -14px 24px rgba(0,0,0,0.25);
+}
+
+.card-top {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.stack {
+  min-width: 120px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  background: rgba(0,0,0,0.25);
+}
+.stack-label { font-size: 12px; opacity: .75; }
+.stack-count { font-size: 18px; font-weight: 600; margin: 4px 0; }
+
+.hand-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+}
+.hand-title { font-size: 12px; opacity: .85; letter-spacing: .4px; text-transform: uppercase; }
+.hand-actions button { padding: 6px 10px; font-size: 12px; }
+
+#handRow {
+  margin-top: 8px;
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  min-height: 170px;
+  align-items: flex-start;
+}
+
+#handRow:empty::after {
+  content: 'Zieh eine Karte, um deine Hand zu sehen';
+  opacity: 0.6;
+  font-size: 12px;
+  padding: 12px 10px;
+  border: 1px dashed rgba(255,255,255,0.2);
+  border-radius: 12px;
+}
+
+.card {
+  position: relative;
+  min-width: 140px;
+  height: 170px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: linear-gradient(160deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease;
+}
+.card:hover { transform: translateY(-3px); border-color: rgba(255,255,255,0.4); }
+.card.has-image {
+  background-size: cover;
+  background-position: center;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.65));
+  opacity: 0.9;
+}
+.card-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  gap: 6px;
+}
+.card-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.card-title { font-weight: 700; font-size: 14px; }
+.card-cost {
+  font-size: 13px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.15);
+}
+.card-text {
+  font-size: 12px;
+  opacity: .9;
+  line-height: 1.35;
+  flex: 1;
+}
+.card-affinity { font-size: 11px; opacity: .75; }
+
+@media (max-width: 860px) {
+  #wrap { flex-direction: column; }
+  #ui { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+  #play { height: calc(100vh - 320px); }
+  #cardPanel { height: 230px; }
+  #landPanel { position: static; padding: 10px 12px 0; }
+}

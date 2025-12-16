@@ -1,0 +1,11 @@
+{
+    "editor.fontSize": 16,
+    "editor.allowVariableFonts": true,
+    "debug.console.fontSize": 16,
+    "scm.inputFontSize": 16,
+    "terminal.integrated.fontSize": 16,
+    "chat.editor.fontSize": 16,
+    "chat.fontSize": 16,
+    "markdown.preview.fontSize": 16,
+    "chatgpt.openOnStartup": true
+}
