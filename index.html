@@ -111,5 +111,29 @@
       <a class="button" href="/hexboard-flat.html">Modus B öffnen</a>
     </div>
   </main>
+  <footer style="opacity:.7;font-size:.85rem;margin-top:2rem;">
+  <span id="buildInfo">build …</span>
+</footer>
+<script>
+(async () => {
+  try {
+    const res = await fetch("/version.txt", { cache: "no-store" });
+    if (!res.ok) return;
+    const txt = await res.text();
+
+    // key=value pro Zeile
+    const data = Object.fromEntries(
+      txt.trim().split("\n").map(line => line.split("=").map(s => s.trim()))
+    );
+
+    const el = document.getElementById("buildInfo");
+    if (!el) return;
+
+    const commit = data.commit || "unknown";
+    const built = data.built_utc || "";
+    el.textContent = built ? `build ${commit} · ${built}` : `build ${commit}`;
+  } catch (_) {}
+})();
+</script>
 </body>
 </html>
