@@ -168,11 +168,11 @@
       inset: -12px;
       border-radius: inherit;
       background: conic-gradient(from 0deg, #f4e7b0, #4a5058, #d9c585, #4a5058, #f4e7b0);
-      filter: blur(12px);
+      filter: blur(12px) brightness(0.92);
       opacity: 0.42;
       z-index: -2;
-      animation: glowShift 3.8s ease-in-out infinite alternate;
-      background-size: 200% 200%;
+      animation: glowPulse 3.2s ease-in-out infinite;
+      will-change: opacity, filter, transform;
     }
     .info-box::after {
       content: "";
@@ -181,8 +181,8 @@
       border-radius: inherit;
       padding: 1px;
       background: conic-gradient(from 0deg, #f4e7b0, #4a5058, #d9c585, #4a5058, #f4e7b0);
-      background-size: 200% 200%;
-      animation: glowShift 3.8s ease-in-out infinite alternate;
+      animation: glowPulseBorder 3.2s ease-in-out infinite;
+      will-change: opacity, filter;
       mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
       -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
       mask-composite: exclude;
@@ -190,10 +190,15 @@
       opacity: 1;
       z-index: -1;
     }
-    @keyframes glowShift {
-      0%   { background-position: 0% 50%; }
-      50%  { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
+    @keyframes glowPulse {
+      0%   { opacity: 0.32; filter: blur(12px) brightness(0.92); transform: scale(0.99); }
+      50%  { opacity: 0.68; filter: blur(14px) brightness(1.24); transform: scale(1.02); }
+      100% { opacity: 0.32; filter: blur(12px) brightness(0.92); transform: scale(0.99); }
+    }
+    @keyframes glowPulseBorder {
+      0%   { opacity: 0.82; filter: brightness(0.95) saturate(1); }
+      50%  { opacity: 1;    filter: brightness(1.18) saturate(1.08); }
+      100% { opacity: 0.82; filter: brightness(0.95) saturate(1); }
     }
     .info-title {
       font: 600 15px/1.2 "Sora","IBM Plex Sans",sans-serif;
@@ -479,11 +484,26 @@
     return hatchPattern;
   }
 
+  function drawGlowStroke(cx, cy, size, colors) {
+    ctx.save();
+    const grad = ctx.createRadialGradient(cx, cy, size * 0.35, cx, cy, size * 1.02);
+    colors.forEach((color, idx) => grad.addColorStop(colors.length === 1 ? 0 : idx / (colors.length - 1), color));
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = Math.max(3, size * 0.12);
+    ctx.shadowColor = colors[colors.length - 1];
+    ctx.shadowBlur = Math.max(6, size * 0.5);
+    ctx.globalCompositeOperation = 'lighter';
+    hexPath(cx, cy, size);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function drawHexCell(cx, cy, size, terrain, opts) {
     const zoomed = size * state.zoom;
     const isPlayer = opts?.isPlayer;
     const isHoly = opts?.isHoly;
     const label = opts?.label;
+    const hasTerrain = Boolean(terrain);
 
     hexPath(cx, cy, zoomed);
 
@@ -508,26 +528,35 @@
     }
 
     if (isPlayer) {
-      ctx.save();
-      ctx.clip();
-      ctx.fillStyle = 'rgba(230, 217, 165, 0.7)';
-      ctx.fill();
-      const pat = ensureHatchPattern();
-      if (pat) {
-        ctx.fillStyle = pat;
-        ctx.globalAlpha = 0.45;
+      if (!hasTerrain) {
+        ctx.save();
+        ctx.clip();
+        ctx.fillStyle = 'rgba(230, 217, 165, 0.7)';
         ctx.fill();
-        ctx.globalAlpha = 1;
+        const pat = ensureHatchPattern();
+        if (pat) {
+          ctx.fillStyle = pat;
+          ctx.globalAlpha = 0.45;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+        ctx.restore();
       }
-      ctx.restore();
+      const p1Glow = ['rgba(255, 158, 58, 0.28)', 'rgba(255, 194, 102, 0.7)', 'rgba(255, 225, 170, 0.95)'];
+      const p2Glow = ['rgba(62, 74, 255, 0.32)', 'rgba(110, 78, 255, 0.65)', 'rgba(161, 110, 255, 0.92)'];
+      drawGlowStroke(cx, cy, zoomed, label === 'P1' ? p1Glow : p2Glow);
     }
 
     if (isHoly) {
-      ctx.save();
-      ctx.clip();
-      ctx.fillStyle = 'rgba(171, 241, 247, 0.35)';
-      ctx.fill();
-      ctx.restore();
+      if (!hasTerrain) {
+        ctx.save();
+        ctx.clip();
+        ctx.fillStyle = 'rgba(171, 241, 247, 0.35)';
+        ctx.fill();
+        ctx.restore();
+      }
+      const holyGlow = ['rgba(46, 231, 217, 0.32)', 'rgba(85, 232, 255, 0.65)', 'rgba(154, 252, 106, 0.9)'];
+      drawGlowStroke(cx, cy, zoomed, holyGlow);
     }
 
     ctx.lineWidth = 1;
