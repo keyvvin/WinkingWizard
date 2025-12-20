@@ -1,0 +1,1119 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hex Board – Flat Layout</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+    :root {
+      color-scheme: dark;
+      --c1: #0d1013;
+      --c2: #1c2228;
+      --c3: #3b4148;
+      --c4: #d4c6ad;
+      --speed: 220s;
+      --shine: 0.08;
+      --vignette: 0.12;
+      --fg: #ede8df;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--fg);
+      font-family: "Sora", "IBM Plex Sans", "Inter", system-ui, -apple-system, sans-serif;
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      padding: 16px;
+      background: linear-gradient(-45deg, var(--c1), var(--c2), var(--c3), var(--c4));
+      background-size: 400% 400%;
+      animation: gradientShift var(--speed) ease infinite;
+      overflow: hidden;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(120% 80% at 18% 22%, rgba(240, 217, 180, var(--shine)), rgba(240, 217, 180, 0) 45%),
+        radial-gradient(120% 80% at 82% 78%, rgba(158, 164, 173, calc(var(--shine)*0.8)), rgba(158, 164, 173, 0) 48%);
+      mix-blend-mode: screen;
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/></filter><rect width="120" height="120" filter="url(%23n)" opacity="0.03"/></svg>');
+      mix-blend-mode: soft-light;
+    }
+    .vignette {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(130% 130% at 50% 50%, rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, var(--vignette)) 100%);
+      mix-blend-mode: multiply;
+      z-index: 2;
+    }
+    @keyframes gradientShift {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    canvas {
+      width: 100vw;
+      height: 100vh;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      display: block;
+      cursor: pointer;
+      position: relative;
+      z-index: 3;
+    }
+    /* Menüleiste */
+    .menu-bar {
+      position: fixed;
+      top: 10px;
+      left: 12px;
+      display: inline-flex;
+      gap: 6px;
+      padding: 6px 8px;
+      background: rgba(0, 0, 0, 0.32);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      backdrop-filter: blur(10px) saturate(115%);
+      -webkit-backdrop-filter: blur(10px) saturate(115%);
+      z-index: 6;
+    }
+    .menu-group {
+      position: relative;
+    }
+    .menu-btn {
+      background: transparent;
+      border: none;
+      color: var(--fg);
+      font: 600 13px/1 "Sora","IBM Plex Sans",sans-serif;
+      padding: 5px 9px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 120ms ease, transform 120ms ease;
+    }
+    .menu-btn:hover { background: rgba(255, 255, 255, 0.07); transform: translateY(-1px); }
+    .menu-dropdown {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      min-width: 170px;
+      background: rgba(12, 14, 18, 0.94);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 4px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.32);
+      padding: 6px;
+      display: grid;
+      gap: 4px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-4px);
+      transition: opacity 140ms ease, transform 140ms ease;
+    }
+    .menu-group.open .menu-dropdown {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+    .menu-item {
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: none;
+      color: var(--fg);
+      font: 500 12.5px/1.2 "IBM Plex Sans",sans-serif;
+      padding: 7px 9px;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 120ms ease;
+    }
+    .menu-item:hover { background: rgba(255, 255, 255, 0.08); }
+    /* Info Box */
+    .info-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      background: rgba(0, 0, 0, 0.35);
+      z-index: 8;
+    }
+    .info-overlay.show { display: grid; }
+    .info-box {
+      position: relative;
+      padding: 16px 18px 14px;
+      background: rgba(22, 24, 28, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 5px;
+      min-width: 260px;
+      max-width: min(360px, 92vw);
+      color: var(--fg);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+      backdrop-filter: blur(14px) saturate(125%);
+      -webkit-backdrop-filter: blur(14px) saturate(125%);
+    }
+    .info-box::before {
+      content: "";
+      position: absolute;
+      inset: -12px;
+      border-radius: inherit;
+      background: conic-gradient(from 0deg, #f4e7b0, #4a5058, #d9c585, #4a5058, #f4e7b0);
+      filter: blur(12px) brightness(0.92);
+      opacity: 0.42;
+      z-index: -2;
+      animation: glowPulse 3.2s ease-in-out infinite;
+      will-change: opacity, filter, transform;
+    }
+    .info-box::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1px;
+      background: conic-gradient(from 0deg, #f4e7b0, #4a5058, #d9c585, #4a5058, #f4e7b0);
+      animation: glowPulseBorder 3.2s ease-in-out infinite;
+      will-change: opacity, filter;
+      mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      mask-composite: exclude;
+      -webkit-mask-composite: xor;
+      opacity: 1;
+      z-index: -1;
+    }
+    @keyframes glowPulse {
+      0%   { opacity: 0.32; filter: blur(12px) brightness(0.92); transform: scale(0.99); }
+      50%  { opacity: 0.68; filter: blur(14px) brightness(1.24); transform: scale(1.02); }
+      100% { opacity: 0.32; filter: blur(12px) brightness(0.92); transform: scale(0.99); }
+    }
+    @keyframes glowPulseBorder {
+      0%   { opacity: 0.82; filter: brightness(0.95) saturate(1); }
+      50%  { opacity: 1;    filter: brightness(1.18) saturate(1.08); }
+      100% { opacity: 0.82; filter: brightness(0.95) saturate(1); }
+    }
+    .info-title {
+      font: 600 15px/1.2 "Sora","IBM Plex Sans",sans-serif;
+      margin: 0 0 6px 0;
+    }
+    .info-message {
+      font: 14px/1.5 "IBM Plex Sans",sans-serif;
+      margin: 0 0 12px 0;
+      opacity: 0.92;
+    }
+    .info-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+    .info-button {
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--fg);
+      font: 600 13px/1 "IBM Plex Sans",sans-serif;
+      cursor: pointer;
+      transition: background 120ms ease, border-color 120ms ease;
+    }
+    .info-button:hover {
+      border-color: rgba(255, 255, 255, 0.32);
+      background: rgba(255, 255, 255, 0.10);
+    }
+    /* Bibliothek */
+    .library-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      background:
+        radial-gradient(120% 120% at 50% 20%, rgba(255, 245, 218, 0.08), rgba(0, 0, 0, 0)),
+        rgba(3, 6, 10, 0.62);
+      z-index: 9;
+      padding: 18px;
+    }
+    .library-overlay.show { display: grid; }
+    .library-panel {
+      width: min(1120px, 94vw);
+      max-height: min(780px, 92vh);
+      background: linear-gradient(145deg, rgba(20, 23, 28, 0.92), rgba(28, 33, 41, 0.88));
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 14px;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+      color: var(--fg);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(18px) saturate(125%);
+      -webkit-backdrop-filter: blur(18px) saturate(125%);
+    }
+    .library-panel::before {
+      content: "";
+      position: absolute;
+      inset: -30%;
+      background: conic-gradient(from 80deg, rgba(244, 231, 176, 0.12), rgba(91, 120, 154, 0.14), rgba(200, 168, 120, 0.18), rgba(91, 120, 154, 0.12));
+      filter: blur(44px);
+      opacity: 0.8;
+      z-index: 0;
+    }
+    .library-panel > * { position: relative; z-index: 1; }
+    .library-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 10px;
+    }
+    .library-title {
+      margin: 0;
+      font: 700 19px/1.25 "Sora","IBM Plex Sans",sans-serif;
+      letter-spacing: 0.4px;
+    }
+    .library-subtitle {
+      margin: 6px 0 0;
+      font: 14px/1.5 "IBM Plex Sans",sans-serif;
+      opacity: 0.82;
+    }
+    .library-close {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: var(--fg);
+      border-radius: 10px;
+      padding: 8px 11px;
+      cursor: pointer;
+      transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+      font: 700 13px/1 "IBM Plex Sans",sans-serif;
+    }
+    .library-close:hover { background: rgba(255, 255, 255, 0.10); border-color: rgba(255, 255, 255, 0.26); transform: translateY(-1px); }
+    .library-body {
+      display: flex;
+      gap: 14px;
+      overflow: hidden;
+      flex: 1;
+      min-height: 0;
+    }
+    .library-sidebar {
+      width: 220px;
+      min-width: 200px;
+      max-width: 260px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+    }
+    .library-content {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow: hidden;
+    }
+    .library-filters { display: flex; flex-direction: column; gap: 8px; }
+    .library-filter {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--fg);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font: 600 12.5px/1 "IBM Plex Sans",sans-serif;
+      letter-spacing: 0.15px;
+      cursor: pointer;
+      transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+      text-align: left;
+      width: 100%;
+    }
+    .library-filter:hover { background: rgba(255, 255, 255, 0.10); transform: translateY(-1px); }
+    .library-filter.active { background: rgba(244, 231, 176, 0.14); border-color: rgba(244, 231, 176, 0.52); }
+    .library-grid {
+      margin-top: 2px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+      overflow: auto;
+      padding-right: 4px;
+      flex: 1;
+      min-height: 0;
+    }
+    .card-tile {
+      background: linear-gradient(150deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 12px;
+      padding: 12px 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+    }
+    .card-tile::after {
+      content: "";
+      position: absolute;
+      inset: -14%;
+      background: radial-gradient(120% 80% at 22% 16%, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0));
+      opacity: 0.8;
+      z-index: 0;
+    }
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .card-pill {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: var(--fg);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font: 700 11.5px/1 "IBM Plex Sans",sans-serif;
+      letter-spacing: 0.2px;
+      position: relative;
+      z-index: 1;
+    }
+    .card-rarity {
+      font: 700 11px/1 "IBM Plex Sans",sans-serif;
+      opacity: 0.72;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 6px 8px;
+      border-radius: 8px;
+    }
+    .card-thumb {
+      position: relative;
+      width: 100%;
+      background:
+        radial-gradient(120% 80% at 50% 14%, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0)),
+        var(--tone, linear-gradient(140deg, #4e6a8b, #171c26));
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.20), 0 14px 26px rgba(0, 0, 0, 0.35);
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      padding: 10px;
+      min-height: 220px;
+    }
+    .card-thumb img {
+      max-width: 100%;
+      height: auto;
+      object-fit: contain;
+      filter: saturate(1.02);
+      display: block;
+    }
+    .card-name {
+      margin: 0;
+      font: 700 14.5px/1.35 "Sora","IBM Plex Sans",sans-serif;
+      letter-spacing: 0.2px;
+      z-index: 1;
+    }
+    .card-meta {
+      font: 12.5px/1.5 "IBM Plex Sans",sans-serif;
+      opacity: 0.82;
+      margin: 0;
+      z-index: 1;
+    }
+    .card-detail {
+      font: 12.5px/1.6 "IBM Plex Sans",sans-serif;
+      opacity: 0.9;
+      margin: 0;
+      color: #f4f0e6;
+      z-index: 1;
+    }
+    .card-tile.is-land .card-meta,
+    .card-tile.is-land .card-detail { display: none; }
+    .library-empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      opacity: 0.8;
+      padding: 22px 8px;
+    }
+    .card-tile[data-type="land"] .card-pill { border-color: rgba(126, 196, 255, 0.55); background: rgba(126, 196, 255, 0.12); color: #dbefff; }
+    .card-tile[data-type="kampf"] .card-pill { border-color: rgba(232, 171, 255, 0.55); background: rgba(232, 171, 255, 0.12); color: #f8e7ff; }
+    .card-tile[data-type="aktion"] .card-pill { border-color: rgba(244, 231, 176, 0.6); background: rgba(244, 231, 176, 0.14); color: #fdf4d8; }
+  </style>
+</head>
+<body>
+<nav class="menu-bar" aria-label="Menüleiste">
+  <div class="menu-group">
+    <button class="menu-btn" type="button">Menü</button>
+    <div class="menu-dropdown">
+      <button class="menu-item" type="button" data-action="new">Neues Spiel</button>
+      <button class="menu-item" type="button" data-action="save">Spiel speichern</button>
+      <button class="menu-item" type="button" data-action="load">Spiel laden</button>
+      <button class="menu-item" type="button" data-action="random">Zufallsbrett</button>
+    </div>
+  </div>
+  <div class="menu-group">
+    <button class="menu-btn" type="button">Info</button>
+    <div class="menu-dropdown">
+      <button class="menu-item" type="button" data-action="info-flow">Spielablauf</button>
+      <button class="menu-item" type="button" data-action="info-cards">Kartentypen</button>
+      <button class="menu-item" type="button" data-action="info-library">Bibliothek</button>
+      <button class="menu-item" type="button" data-action="info-tactics">Taktiken</button>
+    </div>
+  </div>
+  <div class="menu-group">
+    <button class="menu-btn" type="button">Links</button>
+    <div class="menu-dropdown">
+      <button class="menu-item" type="button" data-action="link-livechat">Live Chat</button>
+      <button class="menu-item" type="button" data-action="link-discord">Discord</button>
+      <button class="menu-item" type="button" data-action="link-forum">Forum</button>
+      <button class="menu-item" type="button" data-action="link-mail">Mail</button>
+      <button class="menu-item" type="button" data-action="link-feedback">Feedback</button>
+      <button class="menu-item" type="button" data-action="link-donate">Donate</button>
+    </div>
+  </div>
+</nav>
+<canvas id="board" aria-label="Hex Brett"></canvas>
+<div class="info-overlay" id="infoOverlay" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+  <div class="info-box">
+    <h2 class="info-title" id="infoTitle">Hinweis</h2>
+    <p class="info-message" id="infoMessage">Board wurde generiert!</p>
+    <div class="info-actions">
+      <button class="info-button" id="infoOk">OK</button>
+    </div>
+  </div>
+</div>
+<div class="library-overlay" id="libraryOverlay" role="dialog" aria-modal="true" aria-labelledby="libraryTitle">
+  <div class="library-panel">
+    <div class="library-header">
+      <div>
+        <h2 class="library-title" id="libraryTitle">Bibliothek</h2>
+        <p class="library-subtitle">Miniaturansicht aller Karten, vorbereitet für die Filter nach Länderkarten, Kampfkarten und Aktionskarten.</p>
+      </div>
+      <button class="library-close" type="button" id="libraryClose" aria-label="Bibliothek schließen">&times;</button>
+    </div>
+    <div class="library-body">
+      <div class="library-filters" id="libraryFilters"></div>
+      <div class="library-grid" id="libraryGrid"></div>
+    </div>
+  </div>
+</div>
+<div class="vignette" aria-hidden="true"></div>
+
+<script>
+(() => {
+  // Flach liegendes Sechseck-Layout (flat-top)
+  const BOARD_RADIUS = 3; // feste Größe wie im Mockup
+  const HEX_SIZE = 60;    // Pixel-Radius eines Hexes
+
+  // vorhandene Tiles aus der bisherigen Variante
+  const TERRAIN = [
+    { id:'wuste',        label:'Wüste',         color:'#C9B27B' },
+    { id:'kueste',       label:'Küste',         color:'#3A9AB7', image:'assets/tiles/coast.png' },
+    { id:'wasser',       label:'Wasser',        color:'#2F6E8E' },
+    { id:'ebene',        label:'Ebene',         color:'#7A8A5B' },
+    { id:'sternenebene', label:'Sternenebene',  color:'#8B7CC9', image:'assets/tiles/star plains.png' },
+    { id:'wald',         label:'Wald',          color:'#3E6B55', image:'assets/tiles/forest.png' },
+    { id:'regenwald',    label:'Regenwald',     color:'#2F7A5A', image:'assets/tiles/rainforest.png' },
+    { id:'waldtempel',   label:'Waldtempel',    color:'#5F7D5F', image:'assets/tiles/forest temple.png' },
+    { id:'sumpf',        label:'Sumpf',         color:'#4E5B49', image:'assets/tiles/swamp.png' },
+    { id:'berg',         label:'Berg',          color:'#6A6F7B', image:'assets/tiles/mountain.png' },
+    { id:'bergkamm',     label:'Bergkamm',      color:'#747A88', image:'assets/tiles/mountain2.png' },
+    { id:'himmelberge',  label:'Himmelsberge',  color:'#9AB4D9', image:'assets/tiles/heavenly mountains.png' },
+    { id:'geysir',       label:'Geysir',        color:'#4CA3D9', image:'assets/tiles/geysir.png' },
+    { id:'feuertempel',  label:'Feuertempel',   color:'#C26A3F', image:'assets/tiles/fire temple.png' },
+    { id:'spirit',       label:'Spirit',        color:'#8C6DB6' },
+    { id:'ruine',        label:'Ruine',         color:'#9A8A7A', image:'assets/tiles/ancient ruine.png' },
+    { id:'tempelruine',  label:'Tempelruine',   color:'#BFA56A', image:'assets/tiles/temple ruin.png' },
+    { id:'leer',         label:'Leer',          color:null,      image:'assets/tiles/leer.png' }
+  ];
+
+  const CARD_FILTERS = [
+    { id: 'all',   label: 'Alle Karten' },
+    { id: 'land',  label: 'Länderkarten' },
+    { id: 'kampf', label: 'Kampfkarten' },
+    { id: 'aktion',label: 'Aktionskarten' }
+  ];
+
+  const CARD_TYPE_META = {
+    land:  { label: 'Länderkarten', accent: '#99d7ff' },
+    kampf: { label: 'Kampfkarten', accent: '#e2b4ff' },
+    aktion:{ label: 'Aktionskarten', accent: '#f4e7b0' }
+  };
+
+  const LAND_LIBRARY = TERRAIN
+    .filter(t => t.image && t.id !== 'leer')
+    .map(t => ({
+      id: `terrain-${t.id}`,
+      name: t.label,
+      type: 'land',
+      rarity: 'Gelände',
+      tag: 'Spielfeld',
+      image: t.image,
+      detail: `${t.label} – Original-Textur als Länderkarten-Miniatur.`
+    }));
+
+  const EXTRA_CARDS = [
+    { id:'klingenbote', name:'Klingenbote der Aurin',  type:'kampf',  rarity:'Episch',    tag:'Sturmtruppe',     tone:'linear-gradient(140deg, #d5c4ff, #4e3e7f 52%, #7fd1ff)', detail:'Stärke 3, Eile. Kann von Tempeln aus starten.' },
+    { id:'himmelslanze',name:'Himmelslanze',           type:'kampf',  rarity:'Selten',    tag:'Luftgarde',       tone:'linear-gradient(150deg, #9dd6ff, #1d3653 54%, #c3e8ff)', detail:'Fliegend, ignoriert Gelände. Gewährt +1 Reichweite.' },
+    { id:'eisensturm',  name:'Eisensturm Legion',      type:'kampf',  rarity:'Legendär',  tag:'Belagerung',      tone:'linear-gradient(155deg, #d8d8d8, #3a3f46 54%, #7a8ea7)', detail:'Stärke 5. Errichtet beim Vorrücken einen Wall.' },
+    { id:'chronofalte', name:'Chrono-Falte',           type:'aktion', rarity:'Legendär',  tag:'Zeitkunst',       tone:'linear-gradient(145deg, #bba5ff, #2f2d4f 50%, #f6ecff)', detail:'Aktiviere ein Feld zweimal oder wiederhole die letzte Aktion.' },
+    { id:'schattenzug', name:'Schattenzug',            type:'aktion', rarity:'Selten',    tag:'Vernebelung',     tone:'linear-gradient(160deg, #0e1420, #2d405f 56%, #6fa6ff)', detail:'Verlege eine Einheit um bis zu 2 Felder ungesehen.' },
+    { id:'morgenritus', name:'Ritus der Morgensonne',  type:'aktion', rarity:'Episch',    tag:'Aurora',          tone:'linear-gradient(150deg, #f4e6b3, #7a4a1f 60%, #ffdca5)', detail:'Heilt alle eigenen Einheiten um 2 und verleiht Schild.' }
+  ];
+
+  const CARD_LIBRARY = [...LAND_LIBRARY, ...EXTRA_CARDS];
+
+  const TILE_POOL = TERRAIN.filter(t => t.id !== 'leer');
+  const TERRAIN_BY_ID = new Map(TERRAIN.map(t => [t.id, t]));
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+  const imageCache = new Map(); // terrainId -> HTMLImageElement
+  let hatchPattern = null;
+  const infoOverlay = document.getElementById('infoOverlay');
+  const infoMessageEl = document.getElementById('infoMessage');
+  const infoOkBtn = document.getElementById('infoOk');
+  const libraryOverlay = document.getElementById('libraryOverlay');
+  const libraryGrid = document.getElementById('libraryGrid');
+  const libraryFilters = document.getElementById('libraryFilters');
+  const libraryClose = document.getElementById('libraryClose');
+
+  const cells = buildCells(BOARD_RADIUS);
+  const cellKeys = new Set(cells.map(keyFromCoord));
+  const labels = new Map([
+    [keyFromCoord({ q: 0, r: -BOARD_RADIUS }), 'P2'],
+    [keyFromCoord({ q: 0, r: BOARD_RADIUS }),  'P1']
+  ]);
+  const playerCells = new Set([
+    keyFromCoord({ q: 0, r: -BOARD_RADIUS }),
+    keyFromCoord({ q: 0, r: BOARD_RADIUS })
+  ]);
+  const holySites = new Set([
+    keyFromCoord({ q: 0, r: 0 }),
+    keyFromCoord({ q: -2, r: 0 }),
+    keyFromCoord({ q: -2, r: 2 }),
+    keyFromCoord({ q: 2, r: 0 }),
+    keyFromCoord({ q: 2, r: -2 })
+  ]);
+
+  const state = {
+    tiles: new Map(),   // key -> terrainId | null
+    dpr: window.devicePixelRatio || 1,
+    centerX: 0,
+    centerY: 0,
+    panX: 0,
+    panY: 0,
+    zoom: 1,
+    isPanning: false,
+    lastX: 0,
+    lastY: 0,
+  };
+  let activeLibraryFilter = 'all';
+
+  function buildCells(radius) {
+    const result = [];
+    for (let q = -radius; q <= radius; q++) {
+      for (let r = -radius; r <= radius; r++) {
+        const s = -q - r;
+        if (Math.abs(q) <= radius && Math.abs(r) <= radius && Math.abs(s) <= radius) {
+          result.push({ q, r });
+        }
+      }
+    }
+    return result;
+  }
+
+  function keyFromCoord({ q, r }) {
+    return `${q},${r}`;
+  }
+
+  function axialToPixel(q, r, size) {
+    // flat-top orientation
+    const x = size * (1.5 * q);
+    const y = size * (Math.sqrt(3) * (r + q / 2));
+    return { x, y };
+  }
+
+  function pixelToAxial(x, y, size) {
+    // inverse of axialToPixel for flat-top hexes
+    const q = (2/3 * x) / size;
+    const r = (-1/3 * x + Math.sqrt(3)/3 * y) / size;
+    return cubeRound(q, r, -q - r);
+  }
+
+  function cubeRound(q, r, s) {
+    let rq = Math.round(q);
+    let rr = Math.round(r);
+    let rs = Math.round(s);
+
+    const qDiff = Math.abs(rq - q);
+    const rDiff = Math.abs(rr - r);
+    const sDiff = Math.abs(rs - s);
+
+    if (qDiff > rDiff && qDiff > sDiff) {
+      rq = -rr - rs;
+    } else if (rDiff > sDiff) {
+      rr = -rq - rs;
+    } else {
+      rs = -rq - rr;
+    }
+    return { q: rq, r: rr };
+  }
+
+  function hexPath(cx, cy, size) {
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const angle = i * Math.PI / 3; // 0°, 60°, 120° ... -> flach liegend
+      const x = cx + size * Math.cos(angle);
+      const y = cy + size * Math.sin(angle);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+  }
+
+  function randomTileId() {
+    const t = TILE_POOL[Math.floor(Math.random() * TILE_POOL.length)];
+    return t.id;
+  }
+
+  function randomizeBoard() {
+    cells.forEach(c => {
+      state.tiles.set(keyFromCoord(c), randomTileId());
+    });
+    draw();
+  }
+
+  function clearBoard() {
+    state.tiles.clear();
+    draw();
+  }
+
+  function loadImages() {
+    const promises = TERRAIN
+      .filter(t => t.image)
+      .map(t => new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => resolve();
+        img.onerror = () => resolve();
+        img.src = t.image;
+        imageCache.set(t.id, img);
+      }));
+    return Promise.all(promises);
+  }
+
+  function resizeCanvas() {
+    state.dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * state.dpr;
+    canvas.height = rect.height * state.dpr;
+    ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+    state.centerX = rect.width / 2;
+    state.centerY = rect.height / 2;
+    draw();
+  }
+
+  function draw() {
+    const cssWidth = canvas.width / state.dpr;
+    const cssHeight = canvas.height / state.dpr;
+    ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+    cells.forEach(cell => {
+      const key = keyFromCoord(cell);
+      const terrainId = state.tiles.get(key);
+      const terrain = terrainId ? TERRAIN_BY_ID.get(terrainId) : null;
+      const { x, y } = axialToPixel(cell.q, cell.r, HEX_SIZE);
+      const cx = state.centerX + state.panX + x * state.zoom;
+      const cy = state.centerY + state.panY + y * state.zoom;
+      const isPlayer = playerCells.has(key);
+      const isHoly = holySites.has(key);
+      drawHexCell(cx, cy, HEX_SIZE, terrain, { isPlayer, isHoly, label: labels.get(key) });
+    });
+  }
+
+  function ensureHatchPattern() {
+    if (hatchPattern) return hatchPattern;
+    const off = document.createElement('canvas');
+    off.width = 14;
+    off.height = 14;
+    const ictx = off.getContext('2d');
+    if (!ictx) return null;
+    ictx.strokeStyle = 'rgba(230, 217, 165, 0.3)';
+    ictx.lineWidth = 2;
+    ictx.beginPath();
+    ictx.moveTo(-2, 12);
+    ictx.lineTo(12, -2);
+    ictx.stroke();
+    ictx.beginPath();
+    ictx.moveTo(4, 16);
+    ictx.lineTo(16, 4);
+    ictx.stroke();
+    hatchPattern = ictx.createPattern(off, 'repeat');
+    return hatchPattern;
+  }
+
+  function drawGlowStroke(cx, cy, size, colors) {
+    ctx.save();
+    const grad = ctx.createRadialGradient(cx, cy, size * 0.35, cx, cy, size * 1.02);
+    colors.forEach((color, idx) => grad.addColorStop(colors.length === 1 ? 0 : idx / (colors.length - 1), color));
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = Math.max(3, size * 0.12);
+    ctx.shadowColor = colors[colors.length - 1];
+    ctx.shadowBlur = Math.max(6, size * 0.5);
+    ctx.globalCompositeOperation = 'lighter';
+    hexPath(cx, cy, size);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawHexCell(cx, cy, size, terrain, opts) {
+    const zoomed = size * state.zoom;
+    const isPlayer = opts?.isPlayer;
+    const isHoly = opts?.isHoly;
+    const label = opts?.label;
+    const hasTerrain = Boolean(terrain);
+
+    hexPath(cx, cy, zoomed);
+
+    if (terrain) {
+      const img = imageCache.get(terrain.id);
+      if (img && img.complete && img.naturalWidth) {
+        ctx.save();
+        ctx.clip();
+        const boxW = zoomed * 2;
+        const boxH = zoomed * Math.sqrt(3);
+        const scale = Math.max(boxW / img.width, boxH / img.height);
+        const drawW = img.width * scale;
+        const drawH = img.height * scale;
+        const dx = cx - drawW / 2;
+        const dy = cy - drawH / 2;
+        ctx.drawImage(img, dx, dy, drawW, drawH);
+        ctx.restore();
+      } else if (terrain.color) {
+        ctx.fillStyle = terrain.color;
+        ctx.fill();
+      }
+    }
+
+    if (isPlayer) {
+      if (!hasTerrain) {
+        ctx.save();
+        ctx.clip();
+        ctx.fillStyle = 'rgba(230, 217, 165, 0.7)';
+        ctx.fill();
+        const pat = ensureHatchPattern();
+        if (pat) {
+          ctx.fillStyle = pat;
+          ctx.globalAlpha = 0.45;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+        ctx.restore();
+      }
+      const p1Glow = ['rgba(255, 158, 58, 0.28)', 'rgba(255, 194, 102, 0.7)', 'rgba(255, 225, 170, 0.95)'];
+      const p2Glow = ['rgba(62, 74, 255, 0.32)', 'rgba(110, 78, 255, 0.65)', 'rgba(161, 110, 255, 0.92)'];
+      drawGlowStroke(cx, cy, zoomed, label === 'P1' ? p1Glow : p2Glow);
+    }
+
+    if (isHoly) {
+      if (!hasTerrain) {
+        ctx.save();
+        ctx.clip();
+        ctx.fillStyle = 'rgba(171, 241, 247, 0.35)';
+        ctx.fill();
+        ctx.restore();
+      }
+      const holyGlow = ['rgba(46, 231, 217, 0.32)', 'rgba(85, 232, 255, 0.65)', 'rgba(154, 252, 106, 0.9)'];
+      drawGlowStroke(cx, cy, zoomed, holyGlow);
+    }
+
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#2a2f38';
+    hexPath(cx, cy, zoomed);
+    ctx.stroke();
+
+    if (label) drawLabel(cx, cy, label);
+  }
+
+  function drawLabel(cx, cy, text) {
+    ctx.fillStyle = '#0f1115';
+    ctx.font = 'bold 28px "Inter", "Segoe UI", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, cx, cy);
+  }
+
+  function handlePointer(e) {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const worldX = (x - state.centerX - state.panX) / state.zoom;
+    const worldY = (y - state.centerY - state.panY) / state.zoom;
+    const axial = pixelToAxial(worldX, worldY, HEX_SIZE);
+    const key = keyFromCoord(axial);
+    if (!cellKeys.has(key)) return;
+
+    if (e.button === 2) { // right click -> remove
+      state.tiles.set(key, null);
+    } else if (e.button === 0) { // left click -> random tile
+      state.tiles.set(key, randomTileId());
+    }
+    draw();
+  }
+
+  function startPan(e) {
+    state.isPanning = true;
+    state.lastX = e.clientX;
+    state.lastY = e.clientY;
+  }
+
+  function movePan(e) {
+    if (!state.isPanning) return;
+    const dx = e.clientX - state.lastX;
+    const dy = e.clientY - state.lastY;
+    state.panX += dx;
+    state.panY += dy;
+    state.lastX = e.clientX;
+    state.lastY = e.clientY;
+    draw();
+  }
+
+  function endPan() {
+    state.isPanning = false;
+  }
+
+  function handleWheel(e) {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const worldXBefore = (x - state.centerX - state.panX) / state.zoom;
+    const worldYBefore = (y - state.centerY - state.panY) / state.zoom;
+
+    const delta = Math.sign(e.deltaY);
+    const factor = delta < 0 ? 1.08 : 0.92;
+    const nextZoom = Math.min(4, Math.max(0.35, state.zoom * factor));
+    const zoomChange = nextZoom / state.zoom;
+    state.zoom = nextZoom;
+
+    // adjust pan so that the point under the cursor stays in place
+    const worldXAfter = worldXBefore;
+    const worldYAfter = worldYBefore;
+    const screenXAfter = worldXAfter * state.zoom + state.centerX + state.panX;
+    const screenYAfter = worldYAfter * state.zoom + state.centerY + state.panY;
+    state.panX += (x - screenXAfter);
+    state.panY += (y - screenYAfter);
+
+    draw();
+  }
+
+  function handleMenuClick(e) {
+    const target = e.target;
+    if (!(target instanceof HTMLElement)) return;
+    const action = target.dataset.action;
+    if (!action) return;
+    e.preventDefault();
+    switch (action) {
+      case 'new':
+        clearBoard();
+        break;
+      case 'random':
+        randomizeBoard();
+        showInfo('Board wurde generiert!');
+        break;
+      case 'info-library':
+        openLibrary();
+        break;
+      case 'save':
+      case 'load':
+      case 'info-flow':
+      case 'info-cards':
+      case 'info-tactics':
+      case 'link-livechat':
+      case 'link-discord':
+      case 'link-forum':
+      case 'link-mail':
+      case 'link-feedback':
+      case 'link-donate':
+        alert('Noch nicht implementiert.');
+        break;
+      default:
+        break;
+    }
+    closeAllMenus();
+  }
+
+  function showInfo(message) {
+    if (!infoOverlay || !infoMessageEl) return;
+    infoMessageEl.textContent = message;
+    infoOverlay.classList.add('show');
+  }
+
+  function hideInfo() {
+    if (!infoOverlay) return;
+    infoOverlay.classList.remove('show');
+  }
+
+  function renderLibraryFilters() {
+    if (!libraryFilters) return;
+    libraryFilters.innerHTML = '';
+    CARD_FILTERS.forEach(filter => {
+      const count = filter.id === 'all'
+        ? CARD_LIBRARY.length
+        : CARD_LIBRARY.filter(card => card.type === filter.id).length;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `library-filter${activeLibraryFilter === filter.id ? ' active' : ''}`;
+      btn.textContent = `${filter.label} (${count})`;
+      btn.addEventListener('click', () => {
+        activeLibraryFilter = filter.id;
+        renderLibraryFilters();
+        renderLibraryGrid();
+      });
+      libraryFilters.appendChild(btn);
+    });
+  }
+
+  function renderLibraryGrid() {
+    if (!libraryGrid) return;
+    libraryGrid.innerHTML = '';
+    const cards = CARD_LIBRARY.filter(card => activeLibraryFilter === 'all' || card.type === activeLibraryFilter);
+    if (cards.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'library-empty';
+      empty.textContent = 'Keine Karten in dieser Kategorie.';
+      libraryGrid.appendChild(empty);
+      return;
+    }
+    cards.forEach(card => {
+      const meta = CARD_TYPE_META[card.type] || { label: card.type, accent: '#f4e7b0' };
+      const tile = document.createElement('article');
+      tile.className = 'card-tile';
+      tile.dataset.type = card.type;
+      const tone = card.tone || `linear-gradient(150deg, ${meta.accent}33, #10151d)`;
+      tile.style.setProperty('--tone', tone);
+      tile.style.setProperty('--accent', card.accent || meta.accent);
+
+      const head = document.createElement('div');
+      head.className = 'card-head';
+      const pill = document.createElement('span');
+      pill.className = 'card-pill';
+      pill.textContent = meta.label;
+      const rarity = document.createElement('span');
+      rarity.className = 'card-rarity';
+      rarity.textContent = card.rarity;
+      head.append(pill, rarity);
+
+      const thumb = document.createElement('div');
+      thumb.className = 'card-thumb';
+      if (card.image) {
+        const img = document.createElement('img');
+        img.src = card.image.replace(/ /g, '%20');
+        img.alt = card.name;
+        img.loading = 'lazy';
+        thumb.appendChild(img);
+      }
+
+      const nameEl = document.createElement('h3');
+      nameEl.className = 'card-name';
+      nameEl.textContent = card.name;
+
+      tile.append(head, thumb, nameEl);
+
+      if (card.type !== 'land') {
+        const metaEl = document.createElement('p');
+        metaEl.className = 'card-meta';
+        metaEl.textContent = card.tag;
+        const detailEl = document.createElement('p');
+        detailEl.className = 'card-detail';
+        detailEl.textContent = card.detail;
+        tile.append(metaEl, detailEl);
+      } else {
+        tile.classList.add('is-land');
+      }
+
+      libraryGrid.appendChild(tile);
+    });
+  }
+
+  function openLibrary() {
+    renderLibraryFilters();
+    renderLibraryGrid();
+    libraryOverlay?.classList.add('show');
+  }
+
+  function closeLibrary() {
+    libraryOverlay?.classList.remove('show');
+  }
+
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+  canvas.addEventListener('pointerdown', e => {
+    if (e.button === 1) {
+      startPan(e);
+    } else {
+      handlePointer(e);
+    }
+  });
+  canvas.addEventListener('pointermove', movePan);
+  canvas.addEventListener('pointerup', endPan);
+  canvas.addEventListener('pointerleave', endPan);
+  canvas.addEventListener('wheel', handleWheel, { passive: false });
+  const menuBar = document.querySelector('.menu-bar');
+  const menuGroups = Array.from(document.querySelectorAll('.menu-group'));
+  function closeAllMenus() {
+    menuGroups.forEach(g => g.classList.remove('open'));
+  }
+  menuBar?.addEventListener('click', e => {
+    const target = e.target;
+    if (!(target instanceof HTMLElement)) return;
+    const btn = target.closest('.menu-btn');
+    if (!btn) return;
+    e.preventDefault();
+    const group = btn.closest('.menu-group');
+    if (!group) return;
+    const isOpen = group.classList.contains('open');
+    closeAllMenus();
+    if (!isOpen) group.classList.add('open');
+  });
+  menuBar?.addEventListener('click', handleMenuClick);
+  document.addEventListener('click', e => {
+    const target = e.target;
+    if (!(target instanceof Node)) return;
+    if (!menuBar || menuBar.contains(target)) return;
+    closeAllMenus();
+  });
+  infoOkBtn?.addEventListener('click', hideInfo);
+  infoOverlay?.addEventListener('click', e => {
+    if (e.target === infoOverlay) hideInfo();
+  });
+  libraryClose?.addEventListener('click', closeLibrary);
+  libraryOverlay?.addEventListener('click', e => {
+    if (e.target === libraryOverlay) closeLibrary();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      hideInfo();
+      closeLibrary();
+      closeAllMenus();
+    }
+  });
+  window.addEventListener('resize', resizeCanvas);
+
+  loadImages().then(() => {
+    randomizeBoard();
+    resizeCanvas();
+  });
+})();
+</script>
+</body>
+</html>

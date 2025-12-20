@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hex Board – Prototype</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#0b0d12; color:#e8eefc; overflow:hidden; }
+    #wrap { display:flex; height:100vh; }
+    #ui {
+      width: 280px; padding: 14px; box-sizing:border-box;
+      border-right: 1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      backdrop-filter: blur(6px);
+    }
+    h1 { font-size: 14px; margin: 0 0 10px 0; opacity:.9; letter-spacing:.4px; }
+    .row { display:flex; gap:8px; flex-wrap: wrap; margin: 10px 0; }
+    button, select, input, textarea {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.10);
+      color: inherit;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 13px;
+      outline: none;
+    }
+    button:hover { background: rgba(255,255,255,0.09); cursor:pointer; }
+    button.active { border-color: rgba(255,255,255,0.35); background: rgba(255,255,255,0.12); }
+    textarea { width: 100%; height: 140px; resize: vertical; border-radius: 12px; padding: 10px; box-sizing:border-box; }
+    label { font-size: 12px; opacity:.8; display:block; margin-top: 10px; }
+    .meta { font-size: 12px; opacity:.75; line-height: 1.35; margin-top: 10px; }
+    #canvas { flex:1; display:block; }
+    .pill { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; border:1px solid rgba(255,255,255,0.10); background: rgba(0,0,0,0.25); }
+    .dot { width:10px; height:10px; border-radius:99px; display:inline-block; }
+    .small { font-size: 12px; opacity: .8; }
+  </style>
+</head>
+<body>
+<div id="wrap">
+  <div id="ui">
+    <h1>HEX BOARD · Basic Prototype</h1>
+
+    <div class="row" id="terrainButtons"></div>
+
+    <label>Board-Radius (Hex-Ring)</label>
+    <input id="radius" type="range" min="3" max="20" value="10" />
+    <div class="small">Aktuell: <span id="radiusVal">10</span></div>
+
+    <label>Hex-Größe</label>
+    <input id="size" type="range" min="18" max="140" value="70" />
+    <div class="small">Aktuell: <span id="sizeVal">70</span> px</div>
+
+    <div class="row">
+      <button id="clear">Clear</button>
+      <button id="random">Random</button>
+    </div>
+
+    <label>Export / Import (JSON)</label>
+    <textarea id="json"></textarea>
+    <div class="row">
+      <button id="copy">Copy</button>
+      <button id="load">Load</button>
+    </div>
+
+    <div class="meta">
+      <div class="pill"><span class="dot" style="background:#fff; opacity:.7"></span>
+        <span>Links-Klick: setzen · Rechts-Klick: löschen</span>
+      </div>
+      <div style="height:8px"></div>
+      <div class="pill"><span class="dot" style="background:#fff; opacity:.35"></span>
+        <span>Drag: verschieben · Wheel: zoom</span>
+      </div>
+      <div style="margin-top:10px">
+        Hover: <span id="hoverInfo">—</span>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="canvas"></canvas>
+</div>
+
+<script>
+(() => {
+  // --- Terrains (feel free to rename / extend)
+  const TERRAIN = [
+    { id:'wuste', label:'Wüste', color:'#C9B27B', info:'Heiße Dünen und trockene Winde' },
+    { id:'kueste', label:'Küste', color:'#3A9AB7', image:'assets/tiles/coast.png', info:'Sandiger Übergang zum Meer' },
+    { id:'wasser', label:'Wasser', color:'#2F6E8E', info:'Klare See mit kleiner Strömung' },
+    { id:'ebene', label:'Ebene', color:'#7A8A5B', info:'Weite Gräser und sanfte Hügel' },
+    { id:'sternenebene', label:'Sternenebene', color:'#8B7CC9', image:'assets/tiles/star plains.png', info:'Felder unter leuchtendem Nachthimmel' },
+    { id:'wald', label:'Wald', color:'#3E6B55', image:'assets/tiles/forest.png', info:'Dichter Wald mit hohen Kiefern' },
+    { id:'regenwald', label:'Regenwald', color:'#2F7A5A', image:'assets/tiles/rainforest.png', info:'Feuchte, dichte Vegetation' },
+    { id:'waldtempel', label:'Waldtempel', color:'#5F7D5F', image:'assets/tiles/forest temple.png', info:'Verwachsener Tempel im Grün' },
+    { id:'sumpf', label:'Sumpf', color:'#4E5B49', image:'assets/tiles/swamp.png', info:'Nebliger Morast mit Tümpeln' },
+    { id:'berg', label:'Berg', color:'#6A6F7B', image:'assets/tiles/mountain.png', info:'Felsige Steilhänge' },
+    { id:'bergkamm', label:'Bergkamm', color:'#747A88', image:'assets/tiles/mountain2.png', info:'Karger Grat mit Geröll' },
+    { id:'himmelberge', label:'Himmelsberge', color:'#9AB4D9', image:'assets/tiles/heavenly mountains.png', info:'Helle Gipfel über den Wolken' },
+    { id:'geysir', label:'Geysir', color:'#4CA3D9', image:'assets/tiles/geysir.png', info:'Sprudelnde Quelle mit Dampf' },
+    { id:'feuertempel', label:'Feuertempel', color:'#C26A3F', image:'assets/tiles/fire temple.png', info:'Glühender Tempel im Lavastrom' },
+    { id:'spirit', label:'Spirit', color:'#8C6DB6', info:'Schimmernde Geisterlande' },
+    { id:'ruine', label:'Ruine', color:'#9A8A7A', image:'assets/tiles/ancient ruine.png', info:'Alte Mauern voller Geheimnisse' },
+    { id:'tempelruine', label:'Tempelruine', color:'#BFA56A', image:'assets/tiles/temple ruin.png', info:'Eingestürzter Tempelkomplex' },
+    { id:'leer', label:'Leer', color:null, image:'assets/tiles/leer.png', info:'Kein Terrain' }
+  ];
+
+  // --- DOM
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const terrainButtons = document.getElementById('terrainButtons');
+  const radiusEl = document.getElementById('radius');
+  const sizeEl = document.getElementById('size');
+  const radiusVal = document.getElementById('radiusVal');
+  const sizeVal = document.getElementById('sizeVal');
+  const jsonEl = document.getElementById('json');
+  const hoverInfo = document.getElementById('hoverInfo');
+
+  // --- State
+  let dpr = window.devicePixelRatio || 1;
+  const imageCache = new Map(); // src -> HTMLImageElement
+
+  const state = {
+    hexSize: Number(sizeEl.value),
+    radius: Number(radiusEl.value),
+    zoom: 1,
+    panX: 0,
+    panY: 0,
+    selected: 'wuste',
+    tiles: new Map(), // key "q,r" -> terrainId
+    isPanning: false,
+    lastX: 0,
+    lastY: 0
+  };
+
+  function evtToCanvas(e){
+    const rect = canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  // --- UI: terrain buttons
+  function renderTerrainButtons() {
+    terrainButtons.innerHTML = '';
+    TERRAIN.forEach(t => {
+      const b = document.createElement('button');
+      b.className = (t.id === state.selected) ? 'active' : '';
+      b.innerHTML = t.color
+        ? `<span class="dot" style="background:${t.color}"></span>${t.label}`
+        : `${t.label}`;
+      b.onclick = () => {
+        state.selected = t.id;
+        renderTerrainButtons();
+      };
+      terrainButtons.appendChild(b);
+    });
+  }
+
+  function drawHexImage(img, centerX, centerY, sizePx) {
+    const hexW = Math.sqrt(3) * sizePx;
+    const hexH = 2 * sizePx;
+    // cover the hex box without distorting aspect ratio
+    const scale = Math.max(hexW / img.width, hexH / img.height);
+    const drawW = img.width * scale;
+    const drawH = img.height * scale;
+    const dx = centerX - drawW / 2;
+    const dy = centerY - drawH / 2;
+    ctx.drawImage(img, dx, dy, drawW, drawH);
+  }
+
+  // --- Hex math (axial coords q,r), pointy-top
+  function axialToPixel(q, r, size) {
+    const x = size * (Math.sqrt(3) * q + Math.sqrt(3)/2 * r);
+    const y = size * (3/2 * r);
+    return { x, y };
+  }
+
+  function pixelToAxial(x, y, size) {
+    // inverse of axialToPixel
+    const q = (Math.sqrt(3)/3 * x - 1/3 * y) / size;
+    const r = (2/3 * y) / size;
+    return cubeRound(q, r, -q-r);
+  }
+
+  function cubeRound(x, y, z) {
+    let rx = Math.round(x);
+    let ry = Math.round(y);
+    let rz = Math.round(z);
+
+    const dx = Math.abs(rx - x);
+    const dy = Math.abs(ry - y);
+    const dz = Math.abs(rz - z);
+
+    if (dx > dy && dx > dz) rx = -ry - rz;
+    else if (dy > dz) ry = -rx - rz;
+    else rz = -rx - ry;
+
+    // return axial (q=rx, r=ry)
+    return { q: rx, r: ry };
+  }
+
+  function hexCorners(cx, cy, size) {
+    const pts = [];
+    for (let i=0; i<6; i++) {
+      const angle = (Math.PI / 180) * (60 * i - 30); // pointy top
+      pts.push({
+        x: cx + size * Math.cos(angle),
+        y: cy + size * Math.sin(angle)
+      });
+    }
+    return pts;
+  }
+
+  function key(q, r) { return `${q},${r}`; }
+
+  function inRadius(q, r, radius) {
+    // axial distance from (0,0)
+    const s = -q - r;
+    return (Math.max(Math.abs(q), Math.abs(r), Math.abs(s)) <= radius);
+  }
+
+  // --- Assets
+  function loadTerrainImages() {
+    const sources = Array.from(new Set(TERRAIN.map(t => t.image).filter(Boolean)));
+    if (!sources.length) return Promise.resolve();
+
+    const loaders = sources.map(src => new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => resolve({ src, img });
+      img.onerror = () => resolve({ src, img: null }); // keep going even if one fails
+      img.src = src;
+    }));
+
+    return Promise.all(loaders).then(items => {
+      items.forEach(({ src, img }) => { if (img) imageCache.set(src, img); });
+    });
+  }
+
+  // --- Canvas / view
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.floor(rect.width * dpr);
+    canvas.height = Math.floor(rect.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // keep centered if pan not set
+    if (state.panX === 0 && state.panY === 0) {
+      state.panX = rect.width / 2;
+      state.panY = rect.height / 2;
+    }
+    draw();
+  }
+
+  function worldToScreen(x, y) {
+    return {
+      x: state.panX + x * state.zoom,
+      y: state.panY + y * state.zoom
+    };
+  }
+  function screenToWorld(x, y) {
+    return {
+      x: (x - state.panX) / state.zoom,
+      y: (y - state.panY) / state.zoom
+    };
+  }
+
+  // --- Draw
+  function draw() {
+    const rect = canvas.getBoundingClientRect();
+    ctx.clearRect(0, 0, rect.width, rect.height);
+
+    // background subtle vignette
+    const g = ctx.createRadialGradient(rect.width*0.55, rect.height*0.45, 20, rect.width*0.55, rect.height*0.45, Math.max(rect.width, rect.height));
+    g.addColorStop(0, 'rgba(255,255,255,0.04)');
+    g.addColorStop(1, 'rgba(0,0,0,0.0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,rect.width,rect.height);
+
+    const size = state.hexSize;
+    const r = state.radius;
+
+    // draw grid
+    for (let q=-r; q<=r; q++) {
+      for (let rr=-r; rr<=r; rr++) {
+        if (!inRadius(q, rr, r)) continue;
+
+        const p = axialToPixel(q, rr, size);
+        const sp = worldToScreen(p.x, p.y);
+        const pts = hexCorners(sp.x, sp.y, size * state.zoom);
+
+        const tId = state.tiles.get(key(q, rr));
+        const terrain = TERRAIN.find(t => t.id === tId);
+
+        const traceHex = () => {
+          ctx.beginPath();
+          ctx.moveTo(pts[0].x, pts[0].y);
+          for (let i=1;i<6;i++) ctx.lineTo(pts[i].x, pts[i].y);
+          ctx.closePath();
+        };
+
+        // fill (image first, fallback color)
+        if (terrain) {
+          const img = terrain.image ? imageCache.get(terrain.image) : null;
+          if (img) {
+            const sizePx = size * state.zoom;
+            traceHex();
+            ctx.save();
+            ctx.clip();
+            drawHexImage(img, sp.x, sp.y, sizePx);
+            ctx.restore();
+          } else if (terrain.color) {
+            traceHex();
+            ctx.fillStyle = terrain.color + 'CC'; // slight alpha
+            ctx.fill();
+          }
+        }
+
+        // outline
+        traceHex();
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // coordinate faint (optional, minimal)
+        // ctx.fillStyle = 'rgba(255,255,255,0.06)';
+        // ctx.font = `${11*state.zoom}px system-ui`;
+        // ctx.fillText(`${q},${rr}`, sp.x - 12*state.zoom, sp.y + 4*state.zoom);
+      }
+    }
+  }
+
+  // --- Placement
+  function placeAt(mouseX, mouseY, erase=false) {
+    const w = screenToWorld(mouseX, mouseY);
+    const a = pixelToAxial(w.x, w.y, state.hexSize);
+    if (!inRadius(a.q, a.r, state.radius)) return;
+
+    const k = key(a.q, a.r);
+
+    if (erase || state.selected === 'leer') state.tiles.delete(k);
+    else state.tiles.set(k, state.selected);
+
+    syncJSON();
+    draw();
+  }
+
+  function syncJSON() {
+    const obj = {
+      hexSize: state.hexSize,
+      radius: state.radius,
+      tiles: Array.from(state.tiles.entries()).map(([k,v]) => ({ k, v }))
+    };
+    jsonEl.value = JSON.stringify(obj, null, 2);
+  }
+
+  function loadJSON() {
+    try {
+      const obj = JSON.parse(jsonEl.value || '{}');
+      if (typeof obj.hexSize === 'number') state.hexSize = obj.hexSize;
+      if (typeof obj.radius === 'number') state.radius = obj.radius;
+
+      state.tiles = new Map();
+      if (Array.isArray(obj.tiles)) {
+        obj.tiles.forEach(t => {
+          if (t && typeof t.k === 'string' && typeof t.v === 'string') state.tiles.set(t.k, t.v);
+        });
+      }
+
+      // reflect to sliders
+      sizeEl.value = String(state.hexSize);
+      radiusEl.value = String(state.radius);
+      sizeVal.textContent = String(state.hexSize);
+      radiusVal.textContent = String(state.radius);
+
+      draw();
+    } catch(e) {
+      alert('JSON ungültig.');
+    }
+  }
+
+  // --- Events
+  canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  canvas.addEventListener('mousedown', (e) => {
+    const p = evtToCanvas(e);
+
+    if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
+        state.isPanning = true;
+        state.lastX = e.clientX;
+        state.lastY = e.clientY;
+        return;
+    }
+    if (e.button === 2) placeAt(p.x, p.y, true);
+    else placeAt(p.x, p.y, false);
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (state.isPanning) {
+      const dx = e.clientX - state.lastX;
+      const dy = e.clientY - state.lastY;
+      state.panX += dx;
+      state.panY += dy;
+      state.lastX = e.clientX;
+      state.lastY = e.clientY;
+      draw();
+      return;
+    }
+
+    // hover info
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) return;
+
+    const w = screenToWorld(x, y);
+    const a = pixelToAxial(w.x, w.y, state.hexSize);
+    if (!inRadius(a.q, a.r, state.radius)) { hoverInfo.textContent = '—'; return; }
+    const tId = state.tiles.get(key(a.q, a.r));
+    const t = TERRAIN.find(tt => tt.id === tId);
+    const infoText = t && t.info ? ` — ${t.info}` : '';
+    hoverInfo.textContent = `${a.q},${a.r}` + (t ? ` · ${t.label}${infoText}` : '');
+  });
+
+  window.addEventListener('mouseup', () => state.isPanning = false);
+
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const p = evtToCanvas(e);
+    const mouseX = p.x, mouseY = p.y;
+
+    // zoom around cursor
+    const before = screenToWorld(mouseX, mouseY);
+    const factor = (e.deltaY < 0) ? 1.08 : 0.92;
+    state.zoom = Math.min(3.0, Math.max(0.35, state.zoom * factor));
+    const after = screenToWorld(mouseX, mouseY);
+
+    state.panX += (after.x - before.x) * state.zoom;
+    state.panY += (after.y - before.y) * state.zoom;
+    draw();
+  }, { passive:false });
+
+  // sliders
+  radiusEl.oninput = () => {
+    state.radius = Number(radiusEl.value);
+    radiusVal.textContent = radiusEl.value;
+    syncJSON();
+    draw();
+  };
+  sizeEl.oninput = () => {
+    state.hexSize = Number(sizeEl.value);
+    sizeVal.textContent = sizeEl.value;
+    syncJSON();
+    draw();
+  };
+
+  // buttons
+  document.getElementById('clear').onclick = () => {
+    state.tiles.clear();
+    syncJSON(); draw();
+  };
+
+  document.getElementById('random').onclick = () => {
+    state.tiles.clear();
+    const r = state.radius;
+    const choices = TERRAIN.filter(t => t.id !== 'leer').map(t => t.id);
+    for (let q=-r; q<=r; q++) for (let rr=-r; rr<=r; rr++) {
+      if (!inRadius(q, rr, r)) continue;
+      const pick = choices[Math.floor(Math.random()*choices.length)];
+      state.tiles.set(key(q, rr), pick);
+    }
+    syncJSON(); draw();
+  };
+
+  document.getElementById('copy').onclick = async () => {
+    try { await navigator.clipboard.writeText(jsonEl.value); }
+    catch { alert('Kopieren nicht möglich (Browser-Permission).'); }
+  };
+
+  document.getElementById('load').onclick = loadJSON;
+
+  // init
+  renderTerrainButtons();
+  syncJSON();
+  window.addEventListener('resize', resize);
+  resize();
+  loadTerrainImages().then(() => draw());
+})();
+</script>
+</body>
+</html>
